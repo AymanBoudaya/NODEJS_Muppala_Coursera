@@ -1,14 +1,14 @@
 var express = require('express');
-const bodyParser = require('body-parser');
-const User = require('../models/user');
-var passport = require('passport')
+var router = express.Router();
+var passport = require('passport');
+var User = require('../models/user');
 var authenticate = require('../authenticate');
 
-var router = express.Router();
+const bodyParser = require('body-parser');
 router.use(bodyParser.json());
 
 /* GET users listing. */
-router.get('/', function (req, res, next) {
+router.get('/', authenticate.verifyAdmin, function (req, res, next) {
   res.send('respond with a resource');
 });
 
@@ -42,7 +42,7 @@ router.post('/signup', (req, res, next) => {
 });
 
 router.post('/login', passport.authenticate('local'), (req, res) => {
-  var token = authenticate.getToken({ _id: req.user._id });
+  var token = authenticate.getToken({ _id: req.user._id,admin:req.user.admin });
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
   res.json({ success: true, token: token, status: 'You are successfully logged in!' });

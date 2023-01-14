@@ -5,13 +5,13 @@ const authenticate = require('../authenticate')
 const dishRouter = express.Router();
 
 dishRouter.use(bodyParser.json());
+
 {//principal /dishes and /dishesId routes
 dishRouter.route('/')
-.get((req,res,next) => {
+.get(authenticate.verifyOrdinaryUser,authenticate.verifyAdmin,(req,res,next) => {
     Dishes.find({})
     .populate('comments.author')
     .then((dishes) => {
-        res.render("index", { mytitle: "All Dishes", arrDishes:dishes});        
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
         res.json(dishes);
