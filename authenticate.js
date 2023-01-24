@@ -1,30 +1,27 @@
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 var User = require('./models/user');
-const bodyParser = require('body-parser');
-
 var JwtStrategy = require('passport-jwt').Strategy;
 var ExtractJwt = require('passport-jwt').ExtractJwt;
 var jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 
 var config = require('./config');
-const { authenticate } = require('passport');
-
-exports.local = passport.use(new LocalStrategy(User.authenticate()));
+// authenticte => req.user property is mounted to the request message
+exports.local = passport.use(new LocalStrategy(User.authenticate())); 
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
 exports.getToken = function (user) {
-    return jwt.sign(user, config.secretKey,
+    return jwt.sign(user, config.secretKey, //create the jsonwebtoken
         { expiresIn: 3600 });
 };
-
-var opts = {};
-opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
-opts.secretOrKey = config.secretKey;
-
+// configure jwt strategy for our passport application
+var opts = {}; //options to specify for my jwt based strategy
+opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken(); // how the token should be extracted from the incoming request message
+opts.secretOrKey = config.secretKey; // used within my strategy for the sign in
+//when passport parses the req mess it will use strategy and extract information and load on req mess
 exports.jwtPassport = passport.use(new JwtStrategy(opts,
-    (jwt_payload, done) => {
+    (jwt_payload, done) => { // DONE using for loading thing into the req mess
         console.log("JWT payload: ", jwt_payload);
         User.findOne({ _id: jwt_payload._id }, (err, user) => {
             if (err) {
@@ -41,41 +38,11 @@ exports.jwtPassport = passport.use(new JwtStrategy(opts,
 
 exports.verifyUser = passport.authenticate('jwt', { session: false });
 
-
-
-exports.verifyOrdinaryUser = function (req, res, next) {
-    //     check header or url parameters or post parameters for token
-         var anyToken = req.headers.authorization || req.body.token || req.query.token;
-         console.log("anytoken : ", anyToken);
-         const extractToken = anyToken.split(" ")[1];
-         // decode token
-         if (anyToken) {
-             // verifies secret and checks exp
-             jwt.verify(extractToken, config.secretKey, function (err, decoded) {
-                 if (err) {
-                     var err = new Error('You are not authenticated!');
-                     err.status = 401;
-                     return next(err);
-                 } else {
-                     // if everything is good, save to request for use in other routes
-                     req.decoded = jwt.decode(extractToken);
-                     next();
-                 }
-             });
-         } else {
-             // if there is no token
-             // return an error
-             var err = new Error('No token provided!');
-             err.status = 403;
-             return next(err);
-         }
-     };
-
 exports.verifyAdmin = function (req, res, next) {
-    
-    if (!req.decoded.admin) {
-        return res.status(403).send('access rejected...')
+    if (!req.user.admin) {
+        var err = new Error('You are not authorized to perform this operation!');
+        err.status = 403;
+        return next(err);        
     } 
     next();
-
 };
